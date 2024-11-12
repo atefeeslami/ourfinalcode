@@ -132,7 +132,7 @@ class Discount(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-# مدل BookingDiscount (Many-to-Many برای تخفیف‌ها و رزروها)
+
 class BookingDiscount(Base):
     __tablename__ = 'booking_discounts'
     
