@@ -24,7 +24,7 @@ class UserLogin(BaseModel):
     password: str
 
 # User registration route
-@router.post("/register")
+@router.post("/")
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
@@ -40,17 +40,9 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    access_token = create_access_token(data={"sub": new_user.id})
-    return {"message": "User registered successfully", "access_token": access_token, "token_type": "bearer"}
-
-# User login route
-@router.post("/login")
-def login_user(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not verify_password(user.password, db_user.password):
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
-    access_token = create_access_token(data={"sub": db_user.id})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return new_user
+    #access_token = create_access_token(data={"sub": new_user.id})
+    #return {"message": "User registered successfully", "access_token": access_token, "token_type": "bearer"}
 
 # CRUD operations for user profile, requiring authentication
 @router.get("/{user_id}")
@@ -63,7 +55,12 @@ def get_user(user_id: int, db: Session = Depends(get_db), current_user: User = D
     return user
 
 @router.put("/{user_id}")
-def update_user(user_id: int, user: UserRegister, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_user(
+    user_id: int,
+    user: UserRegister,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
     db_user = db.query(User).filter(User.id == user_id).first()
@@ -89,3 +86,5 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
     db.delete(db_user)
     db.commit()
     return {"message": "User deleted successfully"}
+
+

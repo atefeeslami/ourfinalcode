@@ -47,6 +47,7 @@ class Hotel(Base):
     wishlist_entries = relationship("Wishlist", back_populates="hotel")
 
 # مدل Booking
+
 class Booking(Base):
     __tablename__ = 'bookings'
     
@@ -62,6 +63,7 @@ class Booking(Base):
     user = relationship("User", back_populates="bookings")
     hotel = relationship("Hotel", back_populates="bookings")
     discounts = relationship("BookingDiscount", back_populates="booking")
+    notifications = relationship("Notification", back_populates="booking")  # اضافه کردن این خط برای حل مشکل
 
 # مدل Review
 class Review(Base):
