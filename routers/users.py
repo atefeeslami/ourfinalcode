@@ -5,11 +5,14 @@ from booking.models import User
 from booking.auth import create_access_token, get_password_hash, verify_password, get_current_user
 from pydantic import BaseModel
 from typing import Optional
+import random
 
 router = APIRouter(
     prefix="/users",
     tags=["users"]
 )
+# لیست نقش‌ها
+roles = ["user", "hotel_manager"]
 
 # Pydantic model for user registration and login
 class UserRegister(BaseModel):
@@ -19,30 +22,49 @@ class UserRegister(BaseModel):
     password: str
     phone_number: Optional[str] = None
 
-class UserLogin(BaseModel):
-    email: str
-    password: str
-
 # User registration route
 @router.post("/")
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
+    # بررسی که آیا کاربر با ایمیل مشابه قبلاً ثبت‌نام کرده است
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    # بررسی اینکه آیا ادمین قبلاً وجود دارد یا خیر
+    admin_user = db.query(User).filter(User.role == "admin").first()
+    if admin_user:
+        # اگر ادمین وجود دارد، نقش را به صورت رندم بین user و hotel_manager اختصاص می‌دهیم
+        user_role = random.choice(roles)
+    else:
+        # اگر ادمین وجود ندارد، اولین کاربر به عنوان ادمین ثبت می‌شود
+        user_role = "admin"
+
+    # هش کردن پسورد
     hashed_password = get_password_hash(user.password)
+
+    # ایجاد کاربر جدید
     new_user = User(
         name=user.name,
         lastname=user.lastname,
         email=user.email,
         password=hashed_password,
-        phone_number=user.phone_number
+        phone_number=user.phone_number,
+        role=user_role  # نقش انتخاب‌شده
     )
+
+    # ذخیره کاربر در پایگاه داده
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
     return new_user
-    #access_token = create_access_token(data={"sub": new_user.id})
-    #return {"message": "User registered successfully", "access_token": access_token, "token_type": "bearer"}
+
+
+
+#class UserLogin(BaseModel):
+    email: str
+    password: str
+
 
 # CRUD operations for user profile, requiring authentication
 @router.get("/{user_id}")
