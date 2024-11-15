@@ -58,18 +58,13 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     return new_user
-
-
-
-#class UserLogin(BaseModel):
-    email: str
-    password: str
-
+    #access_token = create_access_token(data={"sub": new_user.id})
+    #return {"message": "User registered successfully", "access_token": access_token, "token_type": "bearer"}
 
 # CRUD operations for user profile, requiring authentication
 @router.get("/{user_id}")
 def get_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.id != user_id:
+    if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -83,7 +78,7 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.id != user_id:
+    if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
@@ -100,7 +95,7 @@ def update_user(
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.id != user_id:
+    if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
@@ -108,5 +103,3 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
     db.delete(db_user)
     db.commit()
     return {"message": "User deleted successfully"}
-
-
