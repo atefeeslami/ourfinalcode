@@ -36,10 +36,18 @@ def create_hotel(
     db.refresh(new_hotel)
     return new_hotel
 
-# عملیات مشاهده لیست هتل‌ها (بدون نیاز به احراز هویت)
+# مشاهده هتل‌ها
 @router.get("/", response_model=List[HotelResponse])
-def get_hotels(db: Session = Depends(get_db)):
-    hotels = db.query(Hotel).all()
+def get_hotels(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role == "admin":
+        hotels = db.query(Hotel).all()
+    elif current_user.role == "hotel_manager":
+        hotels = db.query(Hotel).filter(Hotel.user_id == current_user.id).all()
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
     return hotels
 
 # عملیات مشاهده جزئیات یک هتل خاص
@@ -61,12 +69,9 @@ def update_hotel(
     db_hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
     if not db_hotel:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hotel not found")
-    if current_user.role not in ["admin", "hotel_manager"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-    if current_user.role == "hotel_manager" and db_hotel.user_id != current_user.id:
+    if current_user.role == "admin":
+        pass
+    elif current_user.role == "hotel_manager" and db_hotel.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to update this hotel"
@@ -92,12 +97,17 @@ def delete_hotel(
     db_hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
     if not db_hotel:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hotel not found")
-    if current_user.role != "admin":
+    if current_user.role == "admin":
+        db.delete(db_hotel)
+        db.commit()
+        return {"message": "Hotel deleted successfully"}
+    elif current_user.role == "hotel_manager" and db_hotel.user_id == current_user.id:
+        db.delete(db_hotel)
+        db.commit()
+        return {"message": "Hotel deleted successfully"}
+    else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can delete hotels"
+            detail="Only admins and the hotel manager who created the hotel can delete it"
         )
-
-    db.delete(db_hotel)
-    db.commit()
-    return {"message": "Hotel deleted successfully"}
+    
