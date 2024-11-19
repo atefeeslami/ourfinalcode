@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from booking.database import get_db
 from booking.models import Hotel, User
 from booking.schemas import HotelCreate, HotelUpdate, HotelResponse
@@ -36,18 +36,24 @@ def create_hotel(
     db.refresh(new_hotel)
     return new_hotel
 
-# مشاهده هتل‌ها
+# عملیات مشاهده لیست هتل‌ها با قابلیت فیلتر
 @router.get("/", response_model=List[HotelResponse])
-def get_hotels(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role == "admin":
-        hotels = db.query(Hotel).all()
-    elif current_user.role == "hotel_manager":
-        hotels = db.query(Hotel).filter(Hotel.user_id == current_user.id).all()
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+def get_hotels(
+    db: Session = Depends(get_db),
+    min_price: Optional[float] = Query(None, description="Minimum price per night"),
+    max_price: Optional[float] = Query(None, description="Maximum price per night"),
+    has_wifi: Optional[bool] = Query(None, description="Filter by Wi-Fi availability")
+):
+    query = db.query(Hotel)
+
+    if min_price is not None:
+        query = query.filter(Hotel.price_per_night >= min_price)
+    if max_price is not None:
+        query = query.filter(Hotel.price_per_night <= max_price)
+    if has_wifi is not None:
+        query = query.filter(Hotel.has_wifi == has_wifi)
+
+    hotels = query.all()
     return hotels
 
 # عملیات مشاهده جزئیات یک هتل خاص
@@ -110,4 +116,7 @@ def delete_hotel(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins and the hotel manager who created the hotel can delete it"
         )
-    
+
+    db.delete(db_hotel)
+    db.commit()
+    return {"message": "Hotel deleted successfully"}

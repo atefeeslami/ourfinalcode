@@ -14,7 +14,7 @@ router = APIRouter(
 # مدل ایجاد اعلان جدید
 class NotificationCreate(BaseModel):
     booking_id: int
-    type: str
+    type: str  # "Urgent", "Reminder", etc.
     message: str
 
 # مدل پاسخ برای اعلان
@@ -28,12 +28,27 @@ class NotificationResponse(BaseModel):
 # API برای ایجاد اعلان جدید
 @router.post("/", response_model=dict)
 def create_notification(notification: NotificationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    booking = db.query(Booking).filter(Booking.id == notification.booking_id, Booking.user_id == current_user.id).first()
+    # فقط ادمین یا هتل منیجر مجاز به ایجاد نوتیفیکیشن هستند
+    if current_user.role not in ["admin", "hotel_manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins or hotel managers can create notifications"
+        )
+
+    # بررسی اینکه آیا بوکینگ وجود دارد
+    booking = db.query(Booking).filter(Booking.id == notification.booking_id).first()
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found or not authorized")
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # هتل منیجر فقط می‌تواند برای بوکینگ‌های مربوط به هتل‌های خودش نوتیفیکیشن ایجاد کند
+    if current_user.role == "hotel_manager" and booking.hotel.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to create notifications for this booking"
+        )
 
     new_notification = Notification(
-        user_id=current_user.id,
+        user_id=booking.user_id,  # اعلان برای کاربری که بوکینگ را انجام داده
         booking_id=notification.booking_id,
         type=notification.type,
         message=notification.message,

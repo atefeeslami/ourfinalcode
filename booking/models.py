@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from booking.database import Base
@@ -100,7 +99,7 @@ class Wallet(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    balance = Column(Float, default=0.0)
+    points = Column(Float, default=0.0)
     last_updated = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="wallet")
@@ -120,10 +119,6 @@ class Wishlist(Base):
 # مدل Discount
 class Discount(Base):
     __tablename__ = 'discounts'
-    
-
-
-
     
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, nullable=False)
@@ -158,4 +153,3 @@ class Notification(Base):
 
     user = relationship("User", back_populates="notifications")
     booking = relationship("Booking", back_populates="notifications", uselist=False)
-
