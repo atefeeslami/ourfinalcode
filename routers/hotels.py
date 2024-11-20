@@ -36,19 +36,12 @@ def create_hotel(
     db.refresh(new_hotel)
     return new_hotel
 
-# مشاهده هتل‌ها
+# عملیات مشاهده لیست هتل‌ها (بدون نیاز به احراز هویت)
 @router.get("/", response_model=List[HotelResponse])
-def get_hotels(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role == "admin":
-        hotels = db.query(Hotel).all()
-    elif current_user.role == "hotel_manager":
-        hotels = db.query(Hotel).filter(Hotel.user_id == current_user.id).all()
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+def get_hotels(db: Session = Depends(get_db)):
+    hotels = db.query(Hotel).all()
     return hotels
+
 
 # عملیات مشاهده جزئیات یک هتل خاص
 @router.get("/{hotel_id}", response_model=HotelResponse)
@@ -71,7 +64,7 @@ def update_hotel(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hotel not found")
     if current_user.role == "admin":
         pass
-    elif current_user.role == "hotel_manager" and db_hotel.user_id != current_user.id:
+    if current_user.role == "hotel_manager" and db_hotel.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to update this hotel"
